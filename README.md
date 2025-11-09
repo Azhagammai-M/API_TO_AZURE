@@ -254,6 +254,139 @@ alpha_stockdata_20251103_203400.json
 
 ---
 
+# STEP 8 — Clean & Transform Data Using Azure Databricks
+
+8.1 Create Databricks Workspace
+-
+
+```
+In Azure Portal → search Azure Databricks
+
+Click + Create
+
+Select subscription, resource group, region
+
+Workspace name: APIDatabricksWorkspace
+
+Pricing tier: Premium
+
+Create workspace
+
+```
+
+8.2 Create a Databricks Cluster
+-
+```
+In Databricks UI → Compute → Create compute
+
+Name: api-cleaning-cluster
+
+Runtime: Latest LTS
+
+Node type: Standard_DC4as_v5
+
+Create cluster
+```
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/0e34b0ab-fcef-411d-9104-090aad0b96d2" />
+
+--- 
+
+8.3 Create a Notebook in Azure Databricks
+-
+```
+
+Go to the left sidebar → Click “Workspace”.
+
+Inside Workspace, click “Create” → “Notebook”.
+
+Give your notebook a name — for example:
+👉 api_data_cleaning_notebook
+
+Choose Default Language: Python
+
+Click “Create”
+
+Attach the Notebook to Your Cluster
+
+Once the notebook opens, you’ll see “Detached” at the top.
+
+Click the drop-down → select your cluster → api-cleaning-cluster.
+```
+---
+8.4 Connect to API from Databricks Notebook
+-
+```python
+import requests
+import pandas as pd
+
+
+api_url = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=MSFT&apikey=YOUR_API_KEY"
+response = requests.get(api_url)
+data = response.json()
+```
+---
+8.5 Save Cleaned Data to ADLS
+-
+```python
+storage_account = "yourstorageaccount"
+container = "alpha"
+access_key = "YOUR_ACCESS_KEY"
+folder_path = "output/cleaned_data/"
+
+
+spark.conf.set(f"fs.azure.account.key.{storage_account}.blob.core.windows.net", access_key)
+
+
+output_path = f"wasbs://{container}@{storage_account}.blob.core.windows.net/{folder_path}cleaned_stock_data.json"
+
+
+spark_df = spark.createDataFrame(df)
+spark_df.write.mode("overwrite").json(output_path)
+```
+---
+8.6 Json to CSV file for Visualization
+-
+```python
+# Step 1: Configure Access Key
+storage_account_name = "yourstorageaccount"
+container_name = "alpha"
+access_key = "Youraccesskey"
+
+spark.conf.set(
+    f"fs.azure.account.key.{storage_account_name}.blob.core.windows.net",
+    access_key
+)
+
+# Step 2: Input folder (contains many part- files)
+input_path = f"wasbs://{container_name}@{storage_account_name}.blob.core.windows.net/output/cleaned_data/cleaned_stock_data.json"
+
+# Step 3: Read all JSON files in the folder
+df = spark.read.option("multiline", "true").json(input_path)
+
+# Step 4: Check the data
+df.printSchema()
+df.show(5)
+
+# Step 5: Combine everything into ONE CSV file for Tableau
+output_path = f"wasbs://{container_name}@{storage_account_name}.blob.core.windows.net/output/csv_cleaned_data/"
+
+df.coalesce(1) \
+  .write \
+  .mode("overwrite") \
+  .option("header", True) \
+  .csv(output_path)
+
+print("✅ Combined JSON parts into a single CSV for Tableau!")
+
+```
+---
+# Step 9 : Visualization using Tableau
+-
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/24a855b5-ae18-4fda-9085-d279cebbc14b" />
+---
+
+
 # Summary
 
 | Component               | Purpose                    |
